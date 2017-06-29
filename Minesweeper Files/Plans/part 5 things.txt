@@ -1,0 +1,17 @@
+1. a) Start with cursor
+	b) pull from stack
+	
+2. Reveal if meets criteria
+
+3. Put Children in stack that meet criteria
+
+
+Dont put into stack for the following:
+	1. It has a flag
+	3. It is has been revealed
+	
+Dont put children into stack for the following:
+	1. It has a number
+	
+Dont reveal for the following:
+	1. It is a flag

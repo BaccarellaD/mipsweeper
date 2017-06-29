@@ -1,0 +1,379 @@
+How it works:
+	
+	1. a) Start at cell given
+	   b) Start at popped cell
+	2. Reveal Cell
+	3. Check the 8 cells sorounding it
+		
+		If: cell address out of range -> skip direction block
+	
+		If: cell is hidden AND cell is not Flag AND does not have number   #HAVE TO CHECK IF IN RANGE
+			Then: push cell location
+				  Go To: ITERATE
+		
+		Else If: cell is hidden AND cell is not Flag
+			Then: reveal cell
+				  Go To: ITERATE
+				  
+	4. ITERATE:
+		
+		BEQ $sp, $fp		#when stack and frame pointer are equal, stack empty
+		cur_cell = lw($fp)	#load next in stack
+		$fp = $fp + 4		#restore word popped
+		
+Attempt at Mips:
+
+	# s0 - Start Cell Array
+	# s1 - Current Cell Location
+	# s2 - Current Cell	| Current Surrounding Cell 
+	# s3 - Row
+	# s4 - Col
+	# s5 - Surrounding Cell Location
+	# s6 - FLAG BIT
+	# s7 - REVEAL BIT
+	
+	addi $sp, $sp, -32	#allocate 8 words
+	sw	$s0,   ($sp)
+	sw	$s1,  4($sp)
+	sw	$s2,  8($sp)
+	sw  $s3, 12($sp)
+	sw	$s4, 16($sp)
+	sw  $s5, 20($sp)
+	sw	$s6, 24($sp)
+	sw	$s7, 28($sp)
+	
+	add $s0, $a0, $0	#Move Start of Cell_Array
+	add $s1, $a1, $0	#Move CURRENT CELL LOCATION to $s0
+	
+	add $fp, $sp, $0	#Set stack pointer and frame pointer equal
+	
+	search_cell_loop:
+		
+		sub  $s3, $s1, $s0		# Cur Cell Location - Start Location = Distance
+		li	 $s4, 10			#immediate loaded for division
+		div	 $s3, $s4			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+		add  $s3, $lo, $0		#get quotient -> s3 is ROW
+		add  $s4, $hi, $0		#get remainder -> s4 is COL
+		
+		reveal_cell_mac($s3, $s4, $s0)	#reveal popped cell
+		
+		#################################################################
+		
+		#TOP LEFT Check_2
+		beq $s3, 0, skipTopLeftCheck_2		#row 0
+		beq $s4, 0, skipTopLeftCheck_2		#col 0
+			addi $s5, $s1, -11			#current location - offset
+			lb   $s2, ($s5)				#TOP CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipTopLeftPush	#dont push if it is revealed
+			beq $s6, 0x10, skipTopLeftPush	#dont push if it is a flag
+			bne $s2, 	   skipTopLeftPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipTopLeftPush:
+			
+			beq $s7, 0x40, skipTopLeftReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipTopLeftReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipTopLeftReveal:
+			#if it gets to this point, don't do anything
+			
+		skipTopLeftCheck_2:
+		
+		#TOP Check_2	
+		beq $s3, 0, skipTopCheck_2			#row 0
+			
+			addi $s5, $s1, -10			#current location - offset
+			lb   $s2, ($s5)				#TOP CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipTopPush	#dont push if it is revealed
+			beq $s6, 0x10, skipTopPush	#dont push if it is a flag
+			bne $s2, 	   skipTopPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipTopPush:
+			
+			beq $s7, 0x40, skipTopReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipTopReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipTopReveal:
+			#if it gets to this point, don't do anything
+			
+		skipTopCheck_2:
+		
+		#TOP RIGHT
+		beq $s3, 0, skipTopRightCheck_2		#row 0
+		beq $s4, 9, skipTopRightCheck_2		#col 9
+			
+			addi $s5, $s1, -9			#current location - offset
+			lb   $s2, ($s5)				#TopRight CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipTopRightPush	#dont push if it is revealed
+			beq $s6, 0x10, skipTopRightPush	#dont push if it is a flag
+			bne $s2, 	   skipTopRightPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipTopRightPush:
+			
+			beq $s7, 0x40, skipTopRightReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipTopRightReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipTopRightReveal:
+			#if it gets to this point, don't do anything
+			
+		skipTopRightCheck_2:
+		
+		#RIGHT
+		beq $s4, 9, skipRightCheck_2			#col 9
+			
+			addi $s5, $s1, 1			#current location - offset
+			lb   $s2, ($s5)				#Right CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipRightPush	#dont push if it is revealed
+			beq $s6, 0x10, skipRightPush	#dont push if it is a flag
+			bne $s2, 	   skipRightPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipRightPush:
+			
+			beq $s7, 0x40, skipRightReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipRightReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipRightReveal:
+			#if it gets to this point, don't do anything
+			
+		skipRightCheck_2:
+		
+		#BOTTOM RIGHT
+		beq $s3, 9, skipBottomRightCheck_2	#row 9
+		beq $s4, 9, skipBottomRightCheck_2	#col 9
+		
+			addi $s5, $s1, 11			#current location - offset
+			lb   $s2, ($s5)				#BottomRight CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipBottomRightPush	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomRightPush	#dont push if it is a flag
+			bne $s2, 	   skipBottomRightPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipBottomRightPush:
+			
+			beq $s7, 0x40, skipBottomRightReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomRightReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipBottomRightReveal:
+			#if it gets to this point, don't do anything
+			
+		skipBottomRightCheck_2:
+		
+		#BOTTOM
+		beq $s3, 9, skipBottomCheck_2			#row 9
+		
+			addi $s5, $s1, 10			#current location - offset
+			lb   $s2, ($s5)				#Bottom CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipBottomPush	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomPush	#dont push if it is a flag
+			bne $s2, 	   skipBottomPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipBottomPush:
+			
+			beq $s7, 0x40, skipBottomReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipBottomReveal:
+			#if it gets to this point, don't do anything
+			
+		skipBottomCheck_2:
+		
+		#BOTTOM LEFT
+		beq $s3, 9, skipBottomLeftCheck_2		#row 9
+		beq $s4, 0, skipBottomLeftCheck_2		#col 0
+		
+			addi $s5, $s1, 9			#current location - offset
+			lb   $s2, ($s5)				#BottomLeft CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipBottomLeftPush	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomLeftPush	#dont push if it is a flag
+			bne $s2, 	   skipBottomLeftPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipBottomLeftPush:
+			
+			beq $s7, 0x40, skipBottomLeftReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipBottomLeftReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipBottomLeftReveal:
+			#if it gets to this point, don't do anything
+			
+			
+			
+		skipBottomLeftCheck_2:
+		
+		#LEFT
+		beq $s4, 0, skipLeftCheck_2			#col 0
+		
+			addi $s5, $s1, -1			#current location - offset
+			lb   $s2, ($s5)				#Left CELL CONTENTS
+			
+			andi $s6, $s2, 0x10			#pulls $s6 FLAG BIT
+			andi $s7, $s2, 0x40			#pulls $s7 REVEAL BIT
+			andi $s2, $s2, 0x0F			#gets only Bomb numbers in $s2
+			
+			beq $s7, 0x40, skipLeftPush	#dont push if it is revealed
+			beq $s6, 0x10, skipLeftPush	#dont push if it is a flag
+			bne $s2, 	   skipLeftPush	#dont push if it has numbers
+				addi $sp, $sp, -4	#allocate word for register
+				sw	 $s5, ($sp)		#put cell location into stack
+			skipLeftPush:
+			
+			beq $s7, 0x40, skipLeftReveal	#dont push if it is revealed
+			beq $s6, 0x10, skipLeftReveal	#dont push if it is a flag
+				
+				sub  $s6, $s5, $s0		# Cur Cell Location - Start Location = Distance
+				li	 $s7, 10			#immediate loaded for division
+				div	 $s6, $s7			#divide distance by 10 to get [Quotient = row; Remainder = col]
+		
+				add  $s6, $lo, $0		#get quotient -> s6 is ROW
+				add  $s7, $hi, $0		#get remainder -> s7 is COL
+			
+				reveal_cell_mac($s6, $s7, $s0)
+				
+			skipLeftReveal:
+			#if it gets to this point, don't do anything
+			
+		skipLeftCheck_2:
+
+		#ITERATE
+		
+		beq  $sp, $fp, end_search_cell_loop		#when stack pointer = frame pointer, out of items on stack
+		lw   $s1, ($sp)							#pop item from stack pointer
+		addi $sp, $sp, 4						#restore 1 word
+		
+		
+	end_search_cell_loop:
+	
+	
+	lw	$s0,   ($sp)
+	lw	$s1,  4($sp)
+	lw	$s2,  8($sp)
+	lw  $s3, 12($sp)
+	lw	$s4, 16($sp)
+	lw  $s5, 20($sp)
+	lw	$s6, 24($sp)
+	lw	$s7, 28($sp)
+	addi $sp, $sp, 32
+		
+	jr $ra
+		
+		
+		
+NOTES:
+
+
+Line: 634 - search cells call
+Line: 871 - Start of New Method
+					
+					
+Line: 868  - Allocate stack pointer 
+Line: 1194 - Restore stack pointer
+
+Stack Pointer on Execution: 0x7fffeffc
+Stack Pointer after Execution: 0x7fffeff4
+
+Before initialization loop:
+Load Map Start - 193
+Load Map End   - 375

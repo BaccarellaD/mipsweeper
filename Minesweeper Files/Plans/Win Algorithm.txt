@@ -1,0 +1,89 @@
+Conditions:
+	
+	Win:
+		1. All bombs are flagged
+		2. All flags have bombs
+	
+	Lose:
+		1. A bomb has been revealed
+	
+	On Going:
+		
+		1. Win Condition Not Met
+		2. Lose Condition Not Met
+	
+Algorithm Basic:
+	
+	boolean win = true;
+	
+	for(int i = 0; i < 100; i++){					//loop through each cell
+		if(ca[i].isBomb() && ca[i].revealed()){		//if its a bomb and its revealed
+			return -1;								//then return -1 right away
+		}
+	
+		if(ca[i].isBomb() && !ca[i].flagged()){		//if its a bomb and its not been flagged
+			win = false;							//then set win boolean false
+		}
+		
+		if(ca[i].flagged $$ !ca[i].isBomb()){		//if its been flagged and it is not a bomb
+			win = false;							//then set win boolean to false
+		}
+	}
+	if(win){
+		return 1;
+	}
+	return 0;
+	
+Algorithm Mips:
+	
+	add $t0, $a0, $0	#load cells_array
+	li  $t5, 0			#set up counter
+	
+	li $v0, 1			#game set to win, if not flipped
+	
+	game_status_loop:
+		beq $t5, 100, exit_game_status_loop		#break at 100
+		lb  $t1, ($t0)							# $t1 is CUR_CELL
+		
+		andi $t2, $t1, 0x10			#pulls $t2 FLAG BIT
+		andi $t3, $t1, 0x40			#pulls $t3 REVEAL BIT
+		andi $t4, $t1, 0x20			#pulls $t4 BOMB BIT
+		
+		#checking if cell is bomb and cell is revealed
+		
+		bne $t4, 0x20, game_not_over_yet	#branch if not bomb
+		bne $t3, 0x40, game_not_over_yet	#branch if not revealed
+			li $v0, -1 	#game is over
+			jr $ra		#return
+		game_not_over_yet:
+		
+		#checking if cell is bomb and cell is not flagged
+		
+		bne $t4, 0x20, win_possible_1 #branch if not bomb
+		beq $t2, 0x10, win_possible_1 #branch if flagged
+			li $v0, 0	#game is on-going
+		win_possible_1:
+		
+		#checking if cell is flagged and cell is not bomb
+		
+		bne $t2, 0x10, win_possible_2	#branch if is not flagged
+		beq $t4, 0x20, win_possible_2	#branch if is bomb
+			li $v0, 0	#game is on-going
+		win_possible_2:
+		
+		addi $t5, $t5, 1	#increment count by 1
+		addi $t0, $t0, 1	#increment cell array location by 1
+		
+		j game_status_loop
+		
+	exit_game_status_loop:	
+		
+	jr $ra	#return with solution
+
+	
+		########################################################################
+    	andi $t4, $t3, 0x10								#pulls $t4 FLAG BIT
+    	beq  $t4, 0x10,	replace_move_left_with_flag		#if flag bit is on, replace with flag
+    	
+    	andi $t4, $t3, 0x40									#pulls REVEAL BIT
+    	bne	 $t4, 0x40, replace_move_left_with_square		#cell not already revealed, replace with square

@@ -1,0 +1,124 @@
+1. Load 1 into bit[5] if bomb exists in that location
+
+$row = 0;
+$col = 0;
+
+curCellLocation = cells array location initial
+
+2. Loop through each byte
+	
+	$cell = lb($curCellLocation)
+	
+	$bomb = $cell AND 0x0020 #0x20 = 0010 0000
+	if ($bomb == 0x0020) skip to Tteration  #if there is a bomb, move on
+	
+	$touchCount = 0
+
+	#top left
+	if ($row == 0) skipTopLeftCheck
+	if ($col == 0) skipTopLeftCheck
+		$onTopLeftLoc = $curCellLocation - 10 - 1
+		$onTopLeftCell = lb($curCellLocation)
+		$isBomb? = $onTopLeftCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipTopLeftCheck
+			touchCount++;
+	skipTopLeftCheck:
+	
+	#top
+	if ($row == 0) skipTopCheck
+		$onTopLoc = $curCellLocation - 10
+		$onTopCell = lb($curCellLocation)
+		$isBomb? = $onTopCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipTopCheck
+			touchCount++;
+	skipTopCheck:
+
+	#top right
+	if ($row == 0) skipTopRightCheck
+	if ($col == 9) skipTopRightCheck
+		$onTopRightLoc = $curCellLocation - 10 + 1
+		$onTopRightCell = lb($curCellLocation)
+		$isBomb? = $onTopRightCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipTopRightCheck
+			touchCount++;
+	skipTopRightCheck:
+
+	
+	#right
+	if ($col == 9) skipRightCheck
+		$onRightLoc = $curCellLocation + 1
+		$onRightCell = lb($curCellLocation)
+		$isBomb? = $onRightCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipRightCheck
+			touchCount++;
+	skipRightCheck:
+	
+	
+	#bottom right
+	if ($row == 9) skipBottomRightCheck
+	if ($col == 9) skipBottomRightCheck
+		$onBottomRightLoc = $curCellLocation + 10 + 1
+		$onBottomRightCell = lb($curCellLocation)
+		$isBomb? = $onBottomRightCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipBottomRightCheck
+			touchCount++;
+	skipBottomRightCheck:
+	
+	#bottom
+	if ($row == 9) skipBottomCheck
+		$onBottomLoc = $curCellLocation + 10
+		$onBottomCell = lb($curCellLocation)
+		$isBomb? = $onBottomCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipBottomCheck
+			touchCount++;
+	skipBottomCheck:
+	
+	#bottom left
+	if ($row == 9) skipBottomLeftCheck
+	if ($col == 0) skipBottomLeftCheck
+		$onBottomLeftLoc = $curCellLocation + 10 - 1
+		$onBottomLeftCell = lb($curCellLocation)
+		$isBomb? = $onBottomLeftCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipBottomLeftCheck
+			touchCount++;
+	skipBottomLeftCheck:
+	
+	#left
+	if ($col == 0) skipLeftCheck
+		$onLeftLoc = $curCellLocation - 1
+		$onLeftCell = lb($curCellLocation)
+		$isBomb? = $onLeftCell AND 0x0020
+
+		if($isBomb? != 0x0020) skipLeftCheck
+			touchCount++;
+	skipLeftCheck:
+	
+	if(col != 9), skipEndCheck
+	if(row != 9), skipEndCheck
+		jal appendBox(curCellLocation, touchCount)
+		j endLoop
+	skipEndCheck:
+	
+	if($col != 9), skipNextRowInc
+		$col == 0
+		$row++
+		jal appendBox(curCellLocation, touchCount)
+		$curCellLocation++
+		j loopStart
+		
+	skipNextRowInc:
+		$col++
+		jal appendBox(curCellLocation, touchCount)
+		$curCellLocation++
+		j loopStart
+		
+endLoop:
+	
+	

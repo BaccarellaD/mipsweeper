@@ -1,0 +1,49 @@
+
+
+#$t0 -> start of text buffer location
+#$t1 -> cur char
+
+li $t2, -1	#Cur Row
+
+loop:
+	$t1 = lb($t0)
+	beqz $t1, done_bombs_Ok				#char is null, return
+	blt  $t1, '\space', iterate			#if less than space, white space char
+	blt  $t1, '0', bomb_coordinates_not_ok:		#if less than 0 not valid
+	bgt  $t1, '9', bomb_coordinates_not_ok:		#if greater than 9 not valid
+		
+		bne $t2, -1, placeInCol
+			
+			add $t2, $t1, $0	#place cur char into row store
+			j iterate_place_bomb		#and then iterate
+		placeInCol:
+			
+			li  $t5, 10
+			mul $t4, $t2, $t5	# offset = row * 10
+			add $t4, $t4, $t1	# offset = offset + col
+
+			add $t4, $t4, $t0	# cell_pos = offset + inital buffer location
+			
+			lb  $t5, ($t4)
+			ori $t5, $t5, 0x20	#turns on bomb bit
+			sb  $t5, ($t4)		#stores cell again
+
+			li  $t2, -1
+	
+	iterate_place_bomb:
+	
+	addi $t0, $t0, 1	#iterate cell location
+	
+	j bombInitializationLoop
+	
+done_bombs_Ok:
+
+#put check that both are -1
+
+	bne $t2, -1, bomb_coordinates_ok	#if row is not -1, odd number of coordinates,  error
+		bomb_coordinates_not_ok:
+		li $v0, -1			#return error
+		jr $ra
+	
+bomb_coordinates_ok: #continue from here!
+			

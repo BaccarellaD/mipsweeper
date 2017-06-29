@@ -1,0 +1,86 @@
+
+Before -> Set all black
+
+1. Cursor Position, Exploded Bomb - do last #fuckit
+2. Flag
+	A. Flag With Bomb (Green)
+	B. Flag With No Bomb (Red)
+3. Bomb
+4. Number
+5. Nothing
+
+$CurPos = cell_array #a0?
+$row = 0
+$col = 0
+
+loop:
+	$curCell = lb($curPos)
+	
+	#Flag
+	$flagBit = $curCell AND 0x10
+	
+	bne $flagbit, 0x10, notFlag
+		$bombBit = $curCell AND 0x20
+		beq $bombBit, 0x20, isBombFlag
+			set_cell_mac($row, $col, 'f', BLUE, RED) #is not bomb
+			j iterate
+		isBombFlag:
+			set_cell_mac($row, $col, 'f', BLUE, GREEN)
+			j iterate
+	notFlag:
+	
+	#Bomb
+	$bombBit = $curCell AND 0x20
+	
+	bne $bombBit, 0x20, isNotBomb
+		set_cell_mac($row, $col, 'b', GRAY, BLACK)
+		j iterate
+	isNotBomb:
+	
+	#Number
+	$numberBits	= $curcell AND 0x7
+	beqz $numberBits, noNums
+		bne $numberBits, 1, notOne
+			set_cell_mac($row, $col, '1', MAGENTA, BLACK)
+			j iterate
+		notOne:
+		bne $numberBits, 2, notTwo
+			set_cell_mac($row, $col, '2', MAGENTA, BLACK)
+			j iterate
+		notTwo:
+		
+		.....
+		
+		bne $numberBits, 9, notNine
+			set_cell_mac($row, $col, '9', MAGENTA, BLACK)
+			j iterate
+		notNine:
+		set_cell_mac($row, $col, '0', YELLOW, RED) #some number wut!, ERROR SON
+		j iterate
+	noNums:
+	#that means just black
+	iterate:
+	
+		if(col != 9), skipEndCheck
+	if(row != 9), skipEndCheck
+		jal appendBox(curCellLocation, touchCount)
+		j endLoop
+	skipEndCheck:
+	
+	if($col != 9), skipNextRowInc
+		$col == 0
+		$row++
+		$curCellLocation++
+		j loopStart
+		
+	skipNextRowInc:
+		$col++
+		$curCellLocation++
+		j loopStart
+		
+endLoop:
+
+$row = lw(cursor_row)
+$col = lw(cursor_col)
+
+set_cell_mac($row, $col, 'e', WHITE, BLACK)
